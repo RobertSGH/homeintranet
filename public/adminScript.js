@@ -3,22 +3,22 @@ async function checkAdminAuthentication() {
     const response = await fetch('/api/check-auth');
     const data = await response.json();
 
-    if (data.isAuthenticated) {
-      document.getElementById('logout-button').style.display = 'block';
-      document.getElementById('login-button').style.display = 'none';
-      document.getElementById('login-username').style.display = 'none';
-      document.getElementById('login-password').style.display = 'none';
-      document.getElementById('login-username-label').style.display = 'none';
-      document.getElementById('login-password-label').style.display = 'none';
-    } else {
-      // Redirect to the homepage if the user is not authenticated
+    if (!data.isAuthenticated) {
       window.location.href = '/';
+    } else if (data.user.role !== 'admin') {
+      document.getElementById('register-form').style.display = 'none';
+      document.getElementById('addUserHeader').style.display = 'none';
+      document.getElementById('announcement-form').style.display = 'block';
     }
   } catch (error) {
     console.error('Error checking authentication:', error);
   }
 }
-checkAdminAuthentication();
+
+// Call the function after getUsers and displayUsers have been executed
+getUsers().then(() => {
+  checkAdminAuthentication();
+});
 
 document
   .getElementById('register-form')
@@ -48,6 +48,7 @@ document
     } catch (error) {
       console.error('Error:', error);
     }
+    getUsers();
   });
 
 async function getUsers() {
@@ -57,8 +58,10 @@ async function getUsers() {
       credentials: 'same-origin',
     });
     if (response.ok) {
-      const users = await response.json();
-      displayUsers(users);
+      const data = await response.json();
+      const users = data.users;
+      const role = data.role;
+      displayUsers(users, role);
     } else {
       console.error('Error fetching users:', response.statusText);
     }
@@ -76,7 +79,7 @@ async function deleteUser(id) {
     if (response.ok) {
       const result = await response.json();
       console.log(result);
-      getUsers(); // Refresh the users list after deleting a user
+      getUsers();
     } else {
       console.error('Error deleting user:', response.statusText);
     }
@@ -85,9 +88,11 @@ async function deleteUser(id) {
   }
 }
 
-function displayUsers(users) {
+function displayUsers(users, role) {
   const tbody = document.getElementById('users-table').querySelector('tbody');
   tbody.innerHTML = ''; // Clear the table
+
+  console.log(users);
 
   users.forEach((user) => {
     const row = document.createElement('tr');
@@ -104,35 +109,24 @@ function displayUsers(users) {
     emailCell.textContent = user.email;
     row.appendChild(emailCell);
 
-    // Add the delete button to the row
-    const deleteCell = document.createElement('td');
-    const deleteButton = document.createElement('button');
-    deleteButton.textContent = 'Delete';
-    deleteButton.addEventListener('click', () => {
-      deleteUser(user.id);
-    });
-    deleteCell.appendChild(deleteButton);
-    row.appendChild(deleteCell);
+    const roleCell = document.createElement('td');
+    roleCell.textContent = user.role;
+    row.appendChild(roleCell);
+
+    // Add the delete button to the row if the authenticated user is an admin
+    if (role === 'admin') {
+      const deleteCell = document.createElement('td');
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete';
+      deleteButton.classList.add('btn', 'btn-danger', 'delete-user'); // Add Bootstrap classes
+      deleteButton.dataset.userId = user.id; // Add the user ID to the dataset
+      deleteButton.addEventListener('click', () => {
+        deleteUser(user.id);
+      });
+      deleteCell.appendChild(deleteButton);
+      row.appendChild(deleteCell);
+    }
 
     tbody.appendChild(row);
   });
 }
-getUsers();
-
-document.getElementById('logout-button').addEventListener('click', async () => {
-  try {
-    const response = await fetch('/api/logout', {
-      method: 'POST',
-    });
-
-    if (response.ok) {
-      document.getElementById('logout-button').style.display = 'none';
-      alert('Logout successful');
-      window.location.href = '/'; // Redirect to the homepage after successful logout
-    } else {
-      console.error('Error during logout:', response.statusText);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-  }
-});

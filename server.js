@@ -70,6 +70,41 @@ const db = new sqlite3.Database('./myDatabase.db', (err) => {
 //   }
 // );
 
+//Created db for announcements
+// db.run(
+//   `CREATE TABLE announcements (
+//   id INTEGER PRIMARY KEY AUTOINCREMENT,
+//   title TEXT NOT NULL,
+//   message TEXT NOT NULL,
+//   created_at DATETIME NOT NULL,
+//   updated_at DATETIME NOT NULL
+// )`,
+//   (err) => {
+//     if (err) {
+//       console.error(err.message);
+//     }
+//     console.log('Created the "announcements" table');
+//   }
+// );
+
+//Created db for events
+// db.run(
+//   `CREATE TABLE events (
+//     id INTEGER PRIMARY KEY AUTOINCREMENT,
+//     title TEXT NOT NULL,
+//     start_date TEXT NOT NULL,
+//     end_date TEXT NOT NULL,
+//     all_day BOOLEAN NOT NULL,
+//     description TEXT
+// )`,
+//   (err) => {
+//     if (err) {
+//       console.error(err.message);
+//     }
+//     console.log('Created the "events" table');
+//   }
+// );
+
 //Passport- Session Handling
 app.use(
   session({
@@ -139,40 +174,46 @@ const ensureAdmin = (req, res, next) => {
 };
 
 //Registration
-app.post('/api/register', ensureAuthenticated, async (req, res) => {
-  const { username, email, password, role } = req.body;
+app.post(
+  '/api/register',
+  ensureAuthenticated,
+  ensureAdmin,
+  async (req, res) => {
+    const { username, email, password, role } = req.body;
 
-  if (req.user.role !== 'admin' && role === 'admin') {
-    res
-      .status(403)
-      .json({ message: 'Forbidden: You cannot create an admin user' });
-    return;
-  }
+    if (req.user.role !== 'admin' && role === 'admin') {
+      res
+        .status(403)
+        .json({ message: 'Forbidden: You cannot create an admin user' });
+      return;
+    }
 
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-    db.run(
-      'INSERT INTO users(username, email, password, role) VALUES (?, ?, ?, ?)',
-      [username, email, hashedPassword, role],
-      function (err) {
-        if (err) {
-          console.error('Error:', err);
-          res
-            .status(500)
-            .json({ message: 'Error registering user', error: err });
-        } else {
-          res
-            .status(201)
-            .json({ message: 'User successfully registered', id: this.lastID });
+      db.run(
+        'INSERT INTO users(username, email, password, role) VALUES (?, ?, ?, ?)',
+        [username, email, hashedPassword, role],
+        function (err) {
+          if (err) {
+            console.error('Error:', err);
+            res
+              .status(500)
+              .json({ message: 'Error registering user', error: err });
+          } else {
+            res.status(201).json({
+              message: 'User successfully registered',
+              id: this.lastID,
+            });
+          }
         }
-      }
-    );
-  } catch (err) {
-    console.error('Error:', err);
-    res.status(500).json({ message: 'Error registering user', error: err });
+      );
+    } catch (err) {
+      console.error('Error:', err);
+      res.status(500).json({ message: 'Error registering user', error: err });
+    }
   }
-});
+);
 
 //Login
 app.post('/api/login', passport.authenticate('local'), (req, res) => {
@@ -200,14 +241,23 @@ app.get('/api/check-auth', (req, res) => {
   }
 });
 
-app.get('/api/users', ensureAuthenticated, (req, res) => {
-  db.all('SELECT * FROM users', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ message: 'Error fetching users' });
-    } else {
-      res.json(rows);
-    }
-  });
+app.get('/api/users', (req, res) => {
+  if (req.isAuthenticated()) {
+    const sql = 'SELECT * FROM users';
+
+    db.all(sql, [], (err, rows) => {
+      if (err) {
+        res.status(500).send({ error: 'Failed to fetch users' });
+        console.error(err.message);
+      } else {
+        res.json({ users: rows, role: req.user.role });
+      }
+    });
+  } else {
+    res
+      .status(403)
+      .send({ error: 'You do not have permission to access this data' });
+  }
 });
 
 app.delete('/api/users/:id', ensureAuthenticated, ensureAdmin, (req, res) => {
@@ -223,3 +273,173 @@ app.delete('/api/users/:id', ensureAuthenticated, ensureAdmin, (req, res) => {
     }
   });
 });
+
+app.post('/api/announcements', (req, res) => {
+  const { title, content } = req.body;
+
+  if (req.isAuthenticated() && req.user.role === 'admin') {
+    const sql =
+      'INSERT INTO announcements(title, message, created_at, updated_at) VALUES (?,?,?,?)';
+    const currentDate = new Date().toISOString();
+    const params = [title, content, currentDate, currentDate];
+
+    db.run(sql, params, function (err) {
+      if (err) {
+        res.status(500).send({ error: 'Failed to create announcement' });
+        console.error(err.message);
+      } else {
+        res
+          .status(201)
+          .json({ message: 'Announcement created', id: this.lastID });
+      }
+    });
+  } else {
+    res
+      .status(403)
+      .send({ error: 'You do not have permission to create an announcement' });
+  }
+});
+
+app.get('/api/announcements', (req, res) => {
+  const sql = 'SELECT * FROM announcements ORDER BY created_at DESC';
+
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      res.status(500).send({ error: 'Failed to fetch announcements' });
+      console.error(err.message);
+    } else {
+      res.json({ announcements: rows, role: req.user ? req.user.role : null });
+    }
+  });
+});
+
+app.put('/api/announcements/:id', (req, res) => {
+  const { id } = req.params;
+  const { title, content } = req.body;
+
+  if (req.isAuthenticated() && req.user.role === 'admin') {
+    const sql =
+      'UPDATE announcements SET title = ?, message = ?, updated_at = ? WHERE id = ?';
+    const currentDate = new Date().toISOString();
+    const params = [title, content, currentDate, id];
+
+    db.run(sql, params, function (err) {
+      if (err) {
+        res.status(500).send({ error: 'Failed to update announcement' });
+        console.error(err.message);
+      } else {
+        res.status(200).json({ message: 'Announcement updated' });
+      }
+    });
+  } else {
+    res
+      .status(403)
+      .send({ error: 'You do not have permission to update announcements' });
+  }
+});
+
+app.delete('/api/announcements/:id', (req, res) => {
+  const id = req.params.id;
+
+  if (req.isAuthenticated() && req.user.role === 'admin') {
+    const sql = 'DELETE FROM announcements WHERE id = ?';
+    const params = [id];
+
+    db.run(sql, params, function (err) {
+      if (err) {
+        res.status(500).send({ error: 'Failed to delete announcement' });
+        console.error(err.message);
+      } else {
+        res.json({ message: 'Announcement deleted', id: id });
+      }
+    });
+  } else {
+    res
+      .status(403)
+      .send({ error: 'You do not have permission to delete an announcement' });
+  }
+});
+
+app.post('/api/events', ensureAuthenticated, (req, res) => {
+  const { title, description, start_date, end_date, all_day } = req.body;
+  console.log('Received event data:', req.body); // Add this line to log the received data
+
+  const sql =
+    'INSERT INTO events (title, description, start_date, end_date, all_day) VALUES (?, ?, ?, ?, ?)';
+  const params = [title, description, start_date, end_date, all_day];
+
+  db.run(sql, params, function (err) {
+    if (err) {
+      console.error('Error in the query:', err.message); // Add this line to log the error message
+      res.status(500).send({ error: 'Failed to create event' });
+    } else {
+      res.status(201).json({ message: 'Event created', id: this.lastID });
+    }
+  });
+});
+
+app.get('/api/events', (req, res) => {
+  const sql = 'SELECT * FROM events';
+
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      res.status(500).send({ error: 'Failed to fetch events' });
+      console.error(err.message);
+    } else {
+      res.status(200).json(rows);
+    }
+  });
+});
+
+app.put('/api/events/:id', ensureAuthenticated, (req, res) => {
+  const { id } = req.params;
+  const { title, description, start_date, end_date, all_day } = req.body;
+
+  const sql =
+    'UPDATE events SET title = COALESCE(?, title), description = COALESCE(?, description), start_date = COALESCE(?, start_date), end_date = COALESCE(?, end_date), all_day = COALESCE(?, all_day) WHERE id = ?';
+  const params = [title, description, start_date, end_date, all_day, id];
+
+  db.run(sql, params, function (err) {
+    if (err) {
+      res.status(500).send({ error: 'Failed to update event' });
+      console.error(err.message);
+    } else {
+      res.status(200).json({ message: 'Event updated', id: id });
+    }
+  });
+});
+
+app.delete('/api/events/:id', ensureAuthenticated, (req, res) => {
+  const { id } = req.params;
+  const sql = 'DELETE FROM events WHERE id = ?';
+
+  db.run(sql, id, function (err) {
+    if (err) {
+      res.status(500).send({ error: 'Failed to delete event' });
+      console.error(err.message);
+    } else {
+      res.status(200).json({ message: 'Event deleted' });
+    }
+  });
+});
+
+app.delete('/api/events', ensureAuthenticated, (req, res) => {
+  const sql = 'DELETE FROM events';
+
+  db.run(sql, function (err) {
+    if (err) {
+      res.status(500).send({ error: 'Failed to delete all events' });
+      console.error(err.message);
+    } else {
+      res.status(200).json({ message: 'All events deleted' });
+    }
+  });
+});
+
+//CLOSE DB CONNECTION
+// db.close((err) => {
+//   if (err) {
+//     console.error(err.message);
+//   }
+//   console.log('Closed the database connection.');
+// });
