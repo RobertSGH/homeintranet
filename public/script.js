@@ -92,7 +92,7 @@ function displayAnnouncements(announcements, role) {
     title.textContent = announcement.title;
     cardBody.appendChild(title);
 
-    const date = document.createElement('h6');
+    const date = document.createElement('p');
     date.textContent = `Posted on: ${new Date(
       announcement.created_at
     ).toLocaleDateString()}`;
