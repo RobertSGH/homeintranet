@@ -105,6 +105,22 @@ const db = new sqlite3.Database('./myDatabase.db', (err) => {
 //   }
 // );
 
+//Add user_id column to events table
+// db.run('ALTER TABLE events ADD COLUMN user_id INTEGER', (err) => {
+//   if (err) {
+//     console.error(err.message);
+//   } else {
+//     console.log('Added user_id column to the "events" table');
+//   }
+// });
+// db.run('PRAGMA foreign_keys = ON', (err) => {
+//   if (err) {
+//     console.error(err.message);
+//   } else {
+//     console.log('Foreign key constraint enabled');
+//   }
+// });
+
 //Passport- Session Handling
 app.use(
   session({
@@ -171,6 +187,23 @@ const ensureAdmin = (req, res, next) => {
     return next();
   }
   res.status(403).json({ message: 'Forbidden' });
+};
+
+const ensureEventOwner = (req, res, next) => {
+  const eventId = req.params.id;
+  const userId = req.user.id;
+
+  db.get('SELECT * FROM events WHERE id = ?', eventId, (err, event) => {
+    if (err) {
+      res.status(500).json({ message: 'Error fetching event' });
+    } else if (!event) {
+      res.status(404).json({ message: 'Event not found' });
+    } else if (event.user_id !== userId) {
+      res.status(403).json({ message: 'Forbidden: You do not own this event' });
+    } else {
+      next();
+    }
+  });
 };
 
 //Registration
@@ -362,24 +395,55 @@ app.delete('/api/announcements/:id', (req, res) => {
 
 app.post('/api/events', ensureAuthenticated, (req, res) => {
   const { title, description, start_date, end_date, all_day } = req.body;
-  console.log('Received event data:', req.body); // Add this line to log the received data
+  const user_id = req.user.id;
+  console.log('Received event data:', req.body);
 
   const sql =
-    'INSERT INTO events (title, description, start_date, end_date, all_day) VALUES (?, ?, ?, ?, ?)';
-  const params = [title, description, start_date, end_date, all_day];
+    'INSERT INTO events (user_id, title, description, start_date, end_date, all_day) VALUES (?, ?, ?, ?, ?, ?)';
+  const params = [user_id, title, description, start_date, end_date, all_day];
 
   db.run(sql, params, function (err) {
     if (err) {
-      console.error('Error in the query:', err.message); // Add this line to log the error message
+      console.error('Error in the query:', err.message);
       res.status(500).send({ error: 'Failed to create event' });
     } else {
-      res.status(201).json({ message: 'Event created', id: this.lastID });
+      const eventId = this.lastID;
+
+      // Fetch the username for the user who created the event
+      const getUsernameSql = `
+        SELECT users.username as user_name
+        FROM users
+        WHERE users.id = ?
+      `;
+
+      db.get(getUsernameSql, [user_id], (err, row) => {
+        if (err) {
+          console.error('Error fetching username:', err.message);
+          res.status(500).send({ error: 'Failed to fetch username' });
+        } else {
+          res.status(201).json({
+            message: 'Event created',
+            id: eventId,
+            start_date,
+            end_date,
+            all_day,
+            title,
+            description,
+            user_id,
+            user_name: row.user_name, // Add the user_name to the response
+          });
+        }
+      });
     }
   });
 });
 
 app.get('/api/events', (req, res) => {
-  const sql = 'SELECT * FROM events';
+  const sql = `
+    SELECT events.id, events.title, events.description, events.start_date, events.end_date, events.all_day, users.username as user_name
+    FROM events
+    INNER JOIN users ON events.user_id = users.id
+  `;
 
   db.all(sql, [], (err, rows) => {
     if (err) {
@@ -391,39 +455,57 @@ app.get('/api/events', (req, res) => {
   });
 });
 
-app.put('/api/events/:id', ensureAuthenticated, (req, res) => {
-  const { id } = req.params;
-  const { title, description, start_date, end_date, all_day } = req.body;
+app.put(
+  '/api/events/:id',
+  ensureAuthenticated,
+  ensureEventOwner,
+  (req, res) => {
+    const { id } = req.params;
+    const { title, description, start_date, end_date, all_day } = req.body;
 
-  const sql =
-    'UPDATE events SET title = COALESCE(?, title), description = COALESCE(?, description), start_date = COALESCE(?, start_date), end_date = COALESCE(?, end_date), all_day = COALESCE(?, all_day) WHERE id = ?';
-  const params = [title, description, start_date, end_date, all_day, id];
+    const sql =
+      'UPDATE events SET title = COALESCE(?, title), description = COALESCE(?, description), start_date = COALESCE(?, start_date), end_date = COALESCE(?, end_date), all_day = COALESCE(?, all_day) WHERE id = ?';
+    const params = [title, description, start_date, end_date, all_day, id];
 
-  db.run(sql, params, function (err) {
-    if (err) {
-      res.status(500).send({ error: 'Failed to update event' });
-      console.error(err.message);
-    } else {
-      res.status(200).json({ message: 'Event updated', id: id });
-    }
-  });
-});
+    db.run(sql, params, function (err) {
+      if (err) {
+        res.status(500).send({ error: 'Failed to update event' });
+        console.error(err.message);
+      } else {
+        res.status(201).json({
+          message: 'Event created',
+          id: this.lastID,
+          start_date,
+          end_date,
+          all_day,
+          title,
+          description,
+        });
+      }
+    });
+  }
+);
 
-app.delete('/api/events/:id', ensureAuthenticated, (req, res) => {
-  const { id } = req.params;
-  const sql = 'DELETE FROM events WHERE id = ?';
+app.delete(
+  '/api/events/:id',
+  ensureAuthenticated,
+  ensureEventOwner,
+  (req, res) => {
+    const { id } = req.params;
+    const sql = 'DELETE FROM events WHERE id = ?';
 
-  db.run(sql, id, function (err) {
-    if (err) {
-      res.status(500).send({ error: 'Failed to delete event' });
-      console.error(err.message);
-    } else {
-      res.status(200).json({ message: 'Event deleted' });
-    }
-  });
-});
+    db.run(sql, id, function (err) {
+      if (err) {
+        res.status(500).send({ error: 'Failed to delete event' });
+        console.error(err.message);
+      } else {
+        res.status(200).json({ message: 'Event deleted' });
+      }
+    });
+  }
+);
 
-app.delete('/api/events', ensureAuthenticated, (req, res) => {
+app.delete('/api/events', ensureAuthenticated, ensureEventOwner, (req, res) => {
   const sql = 'DELETE FROM events';
 
   db.run(sql, function (err) {
@@ -443,3 +525,33 @@ app.delete('/api/events', ensureAuthenticated, (req, res) => {
 //   }
 //   console.log('Closed the database connection.');
 // });
+
+const saltRounds = 10;
+
+app.post('/api/create-admin', async (req, res) => {
+  const { username, email, password } = req.body;
+  const role = 'admin';
+
+  try {
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const sql =
+      'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)';
+    const params = [username, email, hashedPassword, role];
+
+    db.run(sql, params, function (err) {
+      if (err) {
+        console.error('Error in the query:', err.message);
+        res.status(500).send({ error: 'Failed to create admin user' });
+      } else {
+        res
+          .status(201)
+          .json({ message: 'Admin user created', id: this.lastID });
+      }
+    });
+  } catch (err) {
+    console.error('Error hashing password:', err.message);
+    res.status(500).send({ error: 'Failed to hash password' });
+  }
+});
