@@ -4,15 +4,17 @@
   box-sizing: border-box;
 }
 
-body {
-  font-family: Arial, sans-serif;
+.app-container {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  background-color: #f5f5f5;
+  width: 100%;
 }
 
-/* Style the navigation bar */
+body {
+  font-family: Arial, sans-serif;
+}
+
 nav a.active {
   color: #007bff;
 }
@@ -21,13 +23,11 @@ nav a:hover {
   color: #007bff;
 }
 
-/* Style the main content */
 h1 {
   margin-bottom: 20px;
   color: #333;
 }
 
-/* Calendar button styles */
 .fc .fc-button {
   background-color: #007bff;
   color: white;

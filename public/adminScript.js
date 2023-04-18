@@ -5,10 +5,18 @@ async function checkAdminAuthentication() {
 
     if (!data.isAuthenticated) {
       window.location.href = '/';
-    } else if (data.user.role !== 'admin') {
-      document.getElementById('register-form').style.display = 'none';
-      document.getElementById('addUserHeader').style.display = 'none';
-      document.getElementById('announcement-form').style.display = 'block';
+    } else {
+      if (data.user.role === 'admin') {
+        document.getElementById('register-form').classList.remove('d-none');
+        document.getElementById('addUserHeader').classList.remove('d-none');
+      } else {
+        document.getElementById('announcement-form').style.display = 'block';
+      }
+      document.getElementById(
+        'user-display'
+      ).textContent = `Welcome ${data.user.username}`;
+      document.getElementById('user-display').classList.remove('d-none');
+      document.getElementById('logout-button').classList.remove('d-none');
     }
   } catch (error) {
     console.error('Error checking authentication:', error);
@@ -25,10 +33,13 @@ document
   .addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    const username = document.getElementById('register-username').value;
-    const password = document.getElementById('register-password').value;
-    const email = document.getElementById('register-email').value;
-    const role = document.getElementById('register-role').value;
+    const username = document.getElementById('register-username');
+    const password = document.getElementById('register-password');
+    const email = document.getElementById('register-email');
+    const role = document.getElementById('register-role');
+    const errorMessageElement = document.getElementById(
+      'register-error-message'
+    );
 
     try {
       const response = await fetch('/api/register', {
@@ -37,16 +48,36 @@ document
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password, email, role }),
+        body: JSON.stringify({
+          username: username.value,
+          password: password.value,
+          email: email.value,
+          role: role.value,
+        }),
       });
 
       if (response.ok) {
-        alert('Registration successful');
+        alert('User successfully added');
+        // Clear input fields
+        username.value = '';
+        password.value = '';
+        email.value = '';
+        role.value = '';
+
+        // Hide the error message
+        errorMessageElement.style.display = 'none';
+
+        // Close the modal
+        $('#register-modal').modal('hide');
       } else {
-        console.error('Error during registration:', response.statusText);
+        const errorData = await response.json();
+        errorMessageElement.textContent =
+          errorData.message || 'Error during registration';
+        errorMessageElement.style.display = 'block';
       }
     } catch (error) {
-      console.error('Error:', error);
+      errorMessageElement.textContent = 'Error: ' + error.message;
+      errorMessageElement.style.display = 'block';
     }
     getUsers();
   });
@@ -91,8 +122,6 @@ async function deleteUser(id) {
 function displayUsers(users, role) {
   const tbody = document.getElementById('users-table').querySelector('tbody');
   tbody.innerHTML = ''; // Clear the table
-
-  console.log(users);
 
   users.forEach((user) => {
     const row = document.createElement('tr');

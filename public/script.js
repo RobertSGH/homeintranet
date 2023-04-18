@@ -3,6 +3,7 @@ async function getUser() {
     const response = await fetch('/api/check-auth');
     const data = await response.json();
 
+    console.log(data);
     if (data.isAuthenticated) {
       return data.user;
     } else {
@@ -13,23 +14,7 @@ async function getUser() {
     return null;
   }
 }
-
-async function checkAdminForAnnouncements() {
-  try {
-    const response = await fetch('/api/check-auth');
-    const data = await response.json();
-
-    if (data.isAuthenticated && data.user.role === 'admin') {
-      document.getElementById('announcement-form').style.display = 'block';
-    } else {
-      document.getElementById('announcement-form').style.display = 'none';
-    }
-  } catch (error) {
-    console.error('Error checking authentication:', error);
-  }
-}
-
-checkAdminForAnnouncements();
+getUser();
 
 document
   .getElementById('announcement-form')
@@ -58,7 +43,6 @@ document
       if (response.status === 201) {
         const data = await response.json();
         console.log('Announcement created:', data);
-        // Optionally, you can clear the form fields after successful submission
         document.getElementById('announcement-title').value = '';
         document.getElementById('announcement-content').value = '';
       } else {
@@ -73,9 +57,23 @@ document
 
 async function fetchAnnouncements() {
   try {
+    const user = await getUser();
+    const announcementForm = document.getElementById('announcement-form');
+    const loginRegisterMessage = document.getElementById(
+      'login-register-message'
+    );
+
+    if (user) {
+      announcementForm.style.display = 'block';
+      loginRegisterMessage.style.display = 'none';
+    } else {
+      announcementForm.style.display = 'none';
+      loginRegisterMessage.style.display = 'block';
+    }
     const response = await fetch('/api/announcements');
     const data = await response.json();
 
+    console.log(data);
     if (response.ok) {
       const role = data.role;
       displayAnnouncements(data.announcements, role);
@@ -87,7 +85,7 @@ async function fetchAnnouncements() {
   }
 }
 
-function displayAnnouncements(announcements, role) {
+function displayAnnouncements(announcements, role, userId) {
   const list = document.getElementById('announcement-list');
   list.innerHTML = '';
 
@@ -128,10 +126,15 @@ function displayAnnouncements(announcements, role) {
     content.classList.add('announcement-content', 'card-text');
     cardBody.appendChild(content);
 
+    const username = document.createElement('h6');
+    username.textContent = `Posted by: ${announcement.username}`;
+    username.classList.add('announcement-username', 'text-muted');
+    cardBody.appendChild(username);
+
     card.appendChild(cardBody);
     col.appendChild(card);
 
-    if (role === 'admin') {
+    if (role === 'admin' || announcement.user_id === userId) {
       const cardFooter = document.createElement('div');
       cardFooter.classList.add('card-footer');
 
@@ -186,7 +189,6 @@ function displayAnnouncements(announcements, role) {
 
   list.appendChild(displayMoreWrapper);
 }
-
 fetchAnnouncements();
 
 function openEditForm(announcement) {
@@ -305,7 +307,13 @@ document.addEventListener('DOMContentLoaded', function () {
         return { domNodes: [container] };
       },
 
-      select: function (info) {
+      select: async function (info) {
+        const user = await getUser();
+        if (!user) {
+          $('#login-reminder-modal').modal('show');
+          return;
+        }
+
         formMode = 'create';
         const eventForm = document.getElementById('event-form');
         eventForm.style.display = 'block';
@@ -489,6 +497,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     calendar.render();
+
     const eventForm = document.getElementById('event-form');
 
     eventForm.addEventListener('submit', async (e) => {
@@ -516,7 +525,6 @@ document.addEventListener('DOMContentLoaded', function () {
         all_day: allDay,
         user_id: user.username,
       };
-      console.log(eventData);
 
       if (formMode === 'create') {
         try {
@@ -566,8 +574,8 @@ async function fetchEvents() {
   try {
     const response = await fetch('/api/events');
     const events = await response.json();
-
     console.log(events);
+
     return events.map((event) => ({
       ...event,
       start: event.start_date,
@@ -711,8 +719,5 @@ const createAdminUser = async (username, email, password) => {
 };
 
 // Replace these values with the desired username, email, and password for the admin user
-const adminUsername = 'Rob';
-const adminEmail = 'robertirska@gmail.com';
-const adminPassword = 'Jebalate342';
 
 // createAdminUser(adminUsername, adminEmail, adminPassword);

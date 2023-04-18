@@ -15,87 +15,116 @@
     />
   </head>
   <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-      <a class="navbar-brand" href="/">Home</a>
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-toggle="collapse"
-        data-target="#navbarNav"
-        aria-controls="navbarNav"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav">
-          <li class="nav-item">
-            <a class="nav-link" href="/admin">Admin</a>
-          </li>
-        </ul>
-        <button id="logout-button" class="btn btn-secondary ml-auto d-none">
-          Logout
+    <div class="app-container">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="/">Home</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-toggle="collapse"
+          data-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
         </button>
-      </div>
-    </nav>
-    <div class="container mt-3">
-      <h3 id="addUserHeader">Add new user</h3>
-      <form id="register-form">
-        <div class="form-group">
-          <label for="register-username">Username:</label>
-          <input
-            type="text"
-            id="register-username"
-            name="username"
-            class="form-control"
-            required
-          />
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="/admin">Admin</a>
+            </li>
+          </ul>
+          <div class="ml-auto d-flex align-items-center">
+            <span id="user-display" class="text-white mr-2 d-none"
+              >Welcome
+            </span>
+            <button id="logout-button" class="btn btn-secondary d-none">
+              Logout
+            </button>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="register-password">Password:</label>
-          <input
-            type="password"
-            id="register-password"
-            name="password"
-            class="form-control"
-            required
-          />
-        </div>
-        <div class="form-group">
-          <label for="register-email">Email:</label>
-          <input
-            type="email"
-            id="register-email"
-            name="email"
-            class="form-control"
-            required
-          />
-        </div>
-        <div class="form-group">
-          <label for="register-role">Role:</label>
-          <select id="register-role" name="role" class="form-control" required>
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary">Register</button>
-      </form>
+      </nav>
+      <div class="container mt-3">
+        <h3 id="addUserHeader" class="d-none">Add new user</h3>
+        <form id="register-form" class="d-none">
+          <div class="form-group">
+            <label for="register-username">Username:</label>
+            <input
+              type="text"
+              id="register-username"
+              name="username"
+              class="form-control"
+              required
+            />
+            <div
+              id="username-error"
+              class="invalid-feedback"
+              style="display: none"
+            >
+              Sorry, that username's taken. Try another?
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="register-email">Email:</label>
+            <input
+              type="email"
+              id="register-email"
+              name="email"
+              class="form-control"
+              required
+            />
+            <div
+              id="email-error"
+              class="invalid-feedback"
+              style="display: none"
+            >
+              Sorry, that email's taken. Try another?
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="register-password">Password:</label>
+            <input
+              type="password"
+              id="register-password"
+              name="password"
+              class="form-control"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="register-role">Role:</label>
+            <select
+              id="register-role"
+              name="role"
+              class="form-control"
+              required
+            >
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Register</button>
+        </form>
 
-      <h3 class="mt-4">Users List</h3>
-      <table id="users-table" class="table">
-        <thead>
-          <tr class="table-active">
-            <th>ID</th>
-            <th>username</th>
-            <th>email</th>
-            <th>role</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+        <h3 class="mt-4">Users List</h3>
+        <table id="users-table" class="table">
+          <thead>
+            <tr class="table-active">
+              <th>ID</th>
+              <th>username</th>
+              <th>email</th>
+              <th>role</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="adminScript.js"></script>
     <script src="common.js"></script>
   </body>

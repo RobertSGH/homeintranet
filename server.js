@@ -9,37 +9,27 @@ const bcrypt = require('bcrypt');
 const app = express();
 const path = require('path');
 
-app.listen(PORT, () => {
-  console.log(`Server is running on ${PORT}`);
-});
-
 app.use(express.static('public')); //serving static files
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-//CREATING ROUTES
-app.get('/api/data', (req, res) => {
-  const data = {
-    message: 'Message from the API',
-  };
-  res.json(data);
-});
-
-app.get('/about', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'about.html'));
-});
+// module.exports = app; // for vercel
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-//WORKING WITH DATABASE
+//DATABASE
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./myDatabase.db', (err) => {
   if (err) {
     console.error(err.message);
   }
   console.log('Connected to myDatabase');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on ${PORT}`);
 });
 
 //new table named users with three columns: id, name, and email. The id column is an auto-incrementing primary key
@@ -50,6 +40,24 @@ const db = new sqlite3.Database('./myDatabase.db', (err) => {
 //       console.log(err.message);
 //     }
 //     console.log('Created the "users" table');
+//   }
+// );
+
+//Created table with accounts
+// db.run(
+//   `CREATE TABLE accounts (
+//     id INTEGER PRIMARY KEY AUTOINCREMENT,
+//     name TEXT NOT NULL,
+//     email TEXT NOT NULL,
+//     created_at TEXT NOT NULL,
+//     updated_at TEXT
+//   );
+//   )`,
+//   (err) => {
+//     if (err) {
+//       console.error(err.message);
+//     }
+//     console.log('Created the "accounts" table');
 //   }
 // );
 
@@ -189,64 +197,153 @@ const ensureAdmin = (req, res, next) => {
   res.status(403).json({ message: 'Forbidden' });
 };
 
-const ensureEventOwner = (req, res, next) => {
-  const eventId = req.params.id;
-  const userId = req.user.id;
+function ensureEventOwnerOrAdmin(req, res, next) {
+  const { id } = req.params;
+  const loggedInUser = req.user;
 
-  db.get('SELECT * FROM events WHERE id = ?', eventId, (err, event) => {
+  const sql = 'SELECT * FROM events WHERE id = ?';
+  const params = [id];
+
+  db.get(sql, params, (err, row) => {
     if (err) {
-      res.status(500).json({ message: 'Error fetching event' });
-    } else if (!event) {
-      res.status(404).json({ message: 'Event not found' });
-    } else if (event.user_id !== userId) {
-      res.status(403).json({ message: 'Forbidden: You do not own this event' });
+      res.status(500).send({ error: 'Failed to fetch event' });
+    } else if (!row) {
+      res.status(404).send({ error: 'Event not found' });
     } else {
-      next();
+      console.log('Event row:', row);
+      console.log('Logged in user:', loggedInUser);
+
+      if (row.user_id === loggedInUser.id || loggedInUser.role === 'admin') {
+        next();
+      } else {
+        res.status(403).send({
+          error: 'You do not have permission to modify this event',
+        });
+      }
     }
   });
-};
+}
+
+function ensureAnnouncementOwner(req, res, next) {
+  const { id } = req.params;
+  const loggedInUser = req.user;
+
+  const sql = 'SELECT * FROM announcements WHERE id = ?';
+  const params = [id];
+
+  db.get(sql, params, (err, row) => {
+    if (err) {
+      res.status(500).send({ error: 'Failed to fetch announcement' });
+    } else if (!row) {
+      res.status(404).send({ error: 'Announcement not found' });
+    } else {
+      console.log('Announcement row:', row);
+      console.log('Logged in user:', loggedInUser);
+
+      if (
+        row.username === loggedInUser.username ||
+        loggedInUser.role === 'admin'
+      ) {
+        next();
+      } else {
+        res.status(403).send({
+          error: 'You do not have permission to modify this announcement',
+        });
+      }
+    }
+  });
+}
 
 //Registration
-app.post(
-  '/api/register',
-  ensureAuthenticated,
-  ensureAdmin,
-  async (req, res) => {
-    const { username, email, password, role } = req.body;
+app.post('/api/register', async (req, res) => {
+  console.log('Request body:', req.body);
+  const { username, email, password, role } = req.body;
+  const defaultRole = 'admin';
+  const currentDate = new Date().toISOString();
 
-    if (req.user.role !== 'admin' && role === 'admin') {
-      res
-        .status(403)
-        .json({ message: 'Forbidden: You cannot create an admin user' });
-      return;
-    }
+  if (req.isAuthenticated() && req.user.role !== 'admin') {
+    res.status(403).json({ message: 'Only admins can create new users' });
+    return;
+  }
 
-    try {
-      const hashedPassword = await bcrypt.hash(password, 10);
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
 
+    const createUser = (accountId) => {
+      const userRole = req.user ? role : defaultRole;
+
+      db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
+        if (err) {
+          console.error('Error:', err);
+          res
+            .status(500)
+            .json({ message: 'Error checking for existing email', error: err });
+        } else if (row) {
+          res.status(400).json({ message: 'Email already exists' });
+        } else {
+          db.get(
+            'SELECT * FROM users WHERE username = ?',
+            [username],
+            (err, row) => {
+              if (err) {
+                console.error('Error:', err);
+                res.status(500).json({
+                  message: 'Error checking for existing username',
+                  error: err,
+                });
+              } else if (row) {
+                res.status(400).json({ message: 'Username already exists' });
+              } else {
+                // Continue with the registration process
+                db.run(
+                  'INSERT INTO users(username, email, password, role, account_id) VALUES (?, ?, ?, ?, ?)',
+                  [username, email, hashedPassword, userRole, accountId],
+                  function (err) {
+                    if (err) {
+                      console.error('Error:', err);
+                      res.status(500).json({
+                        message: 'Error registering user',
+                        error: err,
+                      });
+                    } else {
+                      res.status(201).json({
+                        message: 'User successfully registered',
+                        id: this.lastID,
+                      });
+                    }
+                  }
+                );
+              }
+            }
+          );
+        }
+      });
+    };
+
+    if (req.isAuthenticated()) {
+      createUser(req.user.account_id);
+    } else {
       db.run(
-        'INSERT INTO users(username, email, password, role) VALUES (?, ?, ?, ?)',
-        [username, email, hashedPassword, role],
+        'INSERT INTO accounts(name, email, created_at) VALUES (?, ?, ?)',
+        [username, email, currentDate],
         function (err) {
           if (err) {
             console.error('Error:', err);
             res
               .status(500)
-              .json({ message: 'Error registering user', error: err });
+              .json({ message: 'Error creating account', error: err });
           } else {
-            res.status(201).json({
-              message: 'User successfully registered',
-              id: this.lastID,
-            });
+            const accountId = this.lastID;
+            createUser(accountId);
           }
         }
       );
-    } catch (err) {
-      console.error('Error:', err);
-      res.status(500).json({ message: 'Error registering user', error: err });
     }
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: 'Error registering user', error: err });
   }
-);
+});
 
 //Login
 app.post('/api/login', passport.authenticate('local'), (req, res) => {
@@ -276,9 +373,10 @@ app.get('/api/check-auth', (req, res) => {
 
 app.get('/api/users', (req, res) => {
   if (req.isAuthenticated()) {
-    const sql = 'SELECT * FROM users';
+    const accountId = req.user.account_id;
+    const sql = 'SELECT * FROM users WHERE account_id = ?';
 
-    db.all(sql, [], (err, rows) => {
+    db.all(sql, [accountId], (err, rows) => {
       if (err) {
         res.status(500).send({ error: 'Failed to fetch users' });
         console.error(err.message);
@@ -295,26 +393,38 @@ app.get('/api/users', (req, res) => {
 
 app.delete('/api/users/:id', ensureAuthenticated, ensureAdmin, (req, res) => {
   const userId = req.params.id;
+  const accountId = req.user.account_id;
 
-  db.run('DELETE FROM users WHERE id = ?', [userId], function (err) {
-    if (err) {
-      res.status(500).json({ message: 'Error deleting user' });
-    } else if (this.changes === 0) {
-      res.status(404).json({ message: 'User not found' });
-    } else {
-      res.json({ message: 'User successfully deleted', id: userId });
+  db.run(
+    'DELETE FROM users WHERE id = ? AND account_id = ?',
+    [userId, accountId],
+    function (err) {
+      if (err) {
+        res.status(500).json({ message: 'Error deleting user' });
+      } else if (this.changes === 0) {
+        res.status(404).json({ message: 'User not found' });
+      } else {
+        res.json({ message: 'User successfully deleted', id: userId });
+      }
     }
-  });
+  );
 });
 
 app.post('/api/announcements', (req, res) => {
   const { title, content } = req.body;
 
-  if (req.isAuthenticated() && req.user.role === 'admin') {
+  if (req.isAuthenticated()) {
     const sql =
-      'INSERT INTO announcements(title, message, created_at, updated_at) VALUES (?,?,?,?)';
+      'INSERT INTO announcements(title, message, created_at, updated_at, username, account_id) VALUES (?,?,?,?,?,?)';
     const currentDate = new Date().toISOString();
-    const params = [title, content, currentDate, currentDate];
+    const params = [
+      title,
+      content,
+      currentDate,
+      currentDate,
+      req.user.username,
+      req.user.account_id,
+    ];
 
     db.run(sql, params, function (err) {
       if (err) {
@@ -329,39 +439,67 @@ app.post('/api/announcements', (req, res) => {
   } else {
     res
       .status(403)
-      .send({ error: 'You do not have permission to create an announcement' });
+      .send({ error: 'You must be logged in to create an announcement' });
   }
 });
 
 app.get('/api/announcements', (req, res) => {
-  const sql = 'SELECT * FROM announcements ORDER BY created_at DESC';
+  if (req.isAuthenticated()) {
+    const sql =
+      'SELECT * FROM announcements WHERE account_id = ? ORDER BY created_at DESC';
+    const params = [req.user.account_id];
 
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      res.status(500).send({ error: 'Failed to fetch announcements' });
-      console.error(err.message);
-    } else {
-      res.json({ announcements: rows, role: req.user ? req.user.role : null });
-    }
-  });
+    db.all(sql, params, (err, rows) => {
+      if (err) {
+        res.status(500).send({ error: 'Failed to fetch announcements' });
+        console.error(err.message);
+      } else {
+        res.json({ announcements: rows, role: req.user.role });
+      }
+    });
+  } else {
+    res
+      .status(403)
+      .send({ error: 'You must be logged in to access announcements' });
+  }
 });
 
-app.put('/api/announcements/:id', (req, res) => {
+app.put('/api/announcements/:id', ensureAnnouncementOwner, (req, res) => {
   const { id } = req.params;
   const { title, content } = req.body;
 
-  if (req.isAuthenticated() && req.user.role === 'admin') {
-    const sql =
-      'UPDATE announcements SET title = ?, message = ?, updated_at = ? WHERE id = ?';
-    const currentDate = new Date().toISOString();
-    const params = [title, content, currentDate, id];
+  if (req.isAuthenticated()) {
+    const findAnnouncementSql =
+      'SELECT * FROM announcements WHERE id = ? AND account_id = ?';
+    const findParams = [id, req.user.account_id];
 
-    db.run(sql, params, function (err) {
+    db.get(findAnnouncementSql, findParams, (err, row) => {
       if (err) {
-        res.status(500).send({ error: 'Failed to update announcement' });
+        res.status(500).send({ error: 'Failed to find announcement' });
         console.error(err.message);
       } else {
-        res.status(200).json({ message: 'Announcement updated' });
+        if (
+          row &&
+          (req.user.role === 'admin' || req.user.username === row.username)
+        ) {
+          const sql =
+            'UPDATE announcements SET title = ?, message = ?, updated_at = ? WHERE id = ?';
+          const currentDate = new Date().toISOString();
+          const params = [title, content, currentDate, id];
+
+          db.run(sql, params, function (err) {
+            if (err) {
+              res.status(500).send({ error: 'Failed to update announcement' });
+              console.error(err.message);
+            } else {
+              res.status(200).json({ message: 'Announcement updated' });
+            }
+          });
+        } else {
+          res.status(403).send({
+            error: 'You do not have permission to update announcements',
+          });
+        }
       }
     });
   } else {
@@ -371,36 +509,72 @@ app.put('/api/announcements/:id', (req, res) => {
   }
 });
 
-app.delete('/api/announcements/:id', (req, res) => {
-  const id = req.params.id;
+app.delete(
+  '/api/announcements/:id',
+  ensureAuthenticated,
+  ensureAnnouncementOwner,
+  (req, res) => {
+    const id = req.params.id;
 
-  if (req.isAuthenticated() && req.user.role === 'admin') {
-    const sql = 'DELETE FROM announcements WHERE id = ?';
-    const params = [id];
+    if (req.isAuthenticated()) {
+      const findAnnouncementSql =
+        'SELECT * FROM announcements WHERE id = ? AND account_id = ?';
+      const findParams = [id, req.user.account_id];
 
-    db.run(sql, params, function (err) {
-      if (err) {
-        res.status(500).send({ error: 'Failed to delete announcement' });
-        console.error(err.message);
-      } else {
-        res.json({ message: 'Announcement deleted', id: id });
-      }
-    });
-  } else {
-    res
-      .status(403)
-      .send({ error: 'You do not have permission to delete an announcement' });
+      db.get(findAnnouncementSql, findParams, (err, row) => {
+        if (err) {
+          res.status(500).send({ error: 'Failed to find announcement' });
+          console.error(err.message);
+        } else {
+          if (
+            row &&
+            (req.user.role === 'admin' || req.user.username === row.username)
+          ) {
+            const sql = 'DELETE FROM announcements WHERE id = ?';
+            const params = [id];
+
+            db.run(sql, params, function (err) {
+              if (err) {
+                res
+                  .status(500)
+                  .send({ error: 'Failed to delete announcement' });
+                console.error(err.message);
+              } else {
+                res.json({ message: 'Announcement deleted', id: id });
+              }
+            });
+          } else {
+            res.status(403).send({
+              error: 'You do not have permission to delete an announcement',
+            });
+          }
+        }
+      });
+    } else {
+      res.status(403).send({
+        error: 'You do not have permission to delete an announcement',
+      });
+    }
   }
-});
+);
 
 app.post('/api/events', ensureAuthenticated, (req, res) => {
   const { title, description, start_date, end_date, all_day } = req.body;
   const user_id = req.user.id;
+  const account_id = req.user.account_id; // Add this line
   console.log('Received event data:', req.body);
 
   const sql =
-    'INSERT INTO events (user_id, title, description, start_date, end_date, all_day) VALUES (?, ?, ?, ?, ?, ?)';
-  const params = [user_id, title, description, start_date, end_date, all_day];
+    'INSERT INTO events (user_id, account_id, title, description, start_date, end_date, all_day) VALUES (?, ?, ?, ?, ?, ?, ?)'; // Add account_id
+  const params = [
+    user_id,
+    account_id,
+    title,
+    description,
+    start_date,
+    end_date,
+    all_day,
+  ]; // Add account_id
 
   db.run(sql, params, function (err) {
     if (err) {
@@ -431,6 +605,7 @@ app.post('/api/events', ensureAuthenticated, (req, res) => {
             description,
             user_id,
             user_name: row.user_name, // Add the user_name to the response
+            account_id,
           });
         }
       });
@@ -438,14 +613,18 @@ app.post('/api/events', ensureAuthenticated, (req, res) => {
   });
 });
 
-app.get('/api/events', (req, res) => {
+app.get('/api/events', ensureAuthenticated, (req, res) => {
+  const accountId = req.user.account_id;
+
   const sql = `
     SELECT events.id, events.title, events.description, events.start_date, events.end_date, events.all_day, users.username as user_name
     FROM events
     INNER JOIN users ON events.user_id = users.id
+    WHERE users.account_id = ?
   `;
 
-  db.all(sql, [], (err, rows) => {
+  db.all(sql, [accountId], (err, rows) => {
+    // Add accountId to the parameters
     if (err) {
       res.status(500).send({ error: 'Failed to fetch events' });
       console.error(err.message);
@@ -458,14 +637,25 @@ app.get('/api/events', (req, res) => {
 app.put(
   '/api/events/:id',
   ensureAuthenticated,
-  ensureEventOwner,
+  ensureEventOwnerOrAdmin,
   (req, res) => {
     const { id } = req.params;
     const { title, description, start_date, end_date, all_day } = req.body;
+    const accountId = req.user.account_id;
 
-    const sql =
-      'UPDATE events SET title = COALESCE(?, title), description = COALESCE(?, description), start_date = COALESCE(?, start_date), end_date = COALESCE(?, end_date), all_day = COALESCE(?, all_day) WHERE id = ?';
-    const params = [title, description, start_date, end_date, all_day, id];
+    const sql = `UPDATE events SET title = COALESCE(?, title), description = COALESCE(?, description), 
+    start_date = COALESCE(?, start_date), end_date = COALESCE(?, end_date), 
+    all_day = COALESCE(?, all_day) 
+    WHERE id = ? AND user_id IN (SELECT id FROM users WHERE account_id = ?)`; // Modify the WHERE clause
+    const params = [
+      title,
+      description,
+      start_date,
+      end_date,
+      all_day,
+      id,
+      accountId,
+    ]; // Add accountId to the parameters
 
     db.run(sql, params, function (err) {
       if (err) {
@@ -473,8 +663,8 @@ app.put(
         console.error(err.message);
       } else {
         res.status(201).json({
-          message: 'Event created',
-          id: this.lastID,
+          message: 'Event updated', // Change the message to 'Event updated'
+          id: id, // Change this.lastID to id
           start_date,
           end_date,
           all_day,
@@ -489,12 +679,16 @@ app.put(
 app.delete(
   '/api/events/:id',
   ensureAuthenticated,
-  ensureEventOwner,
+  ensureEventOwnerOrAdmin,
   (req, res) => {
     const { id } = req.params;
-    const sql = 'DELETE FROM events WHERE id = ?';
+    const accountId = req.user.account_id;
 
-    db.run(sql, id, function (err) {
+    const sql =
+      'DELETE FROM events WHERE id = ? AND user_id IN (SELECT id FROM users WHERE account_id = ?)'; // Modify the WHERE clause
+    const params = [id, accountId]; // Add accountId to the parameters
+
+    db.run(sql, params, function (err) {
       if (err) {
         res.status(500).send({ error: 'Failed to delete event' });
         console.error(err.message);
@@ -505,7 +699,7 @@ app.delete(
   }
 );
 
-app.delete('/api/events', ensureAuthenticated, ensureEventOwner, (req, res) => {
+app.delete('/api/events', ensureAuthenticated, (req, res) => {
   const sql = 'DELETE FROM events';
 
   db.run(sql, function (err) {
@@ -517,6 +711,19 @@ app.delete('/api/events', ensureAuthenticated, ensureEventOwner, (req, res) => {
     }
   });
 });
+
+function alterTable() {
+  const sql = 'ALTER TABLE events ADD COLUMN account_id INTEGER';
+
+  db.run(sql, (err) => {
+    if (err) {
+      console.error('Failed to alter table:', err.message);
+    } else {
+      console.log('Table altered successfully');
+    }
+  });
+}
+// alterTable();
 
 //CLOSE DB CONNECTION
 // db.close((err) => {
@@ -555,3 +762,30 @@ app.post('/api/create-admin', async (req, res) => {
     res.status(500).send({ error: 'Failed to hash password' });
   }
 });
+
+// const emailToCheck = 'robertirska@gmail.com';
+
+// db.get('SELECT * FROM accounts WHERE name = ?', [emailToCheck], (err, row) => {
+//   if (err) {
+//     console.error('Error:', err);
+//   } else if (row) {
+//     console.log('Account found:', row);
+//   } else {
+//     console.log('Account not found');
+//   }
+// });
+
+// const addAccountIdToAnnouncements = `
+// ALTER TABLE events ADD COLUMN account_id INTEGER;
+// `;
+
+// db.run(addAccountIdToAnnouncements, (err) => {
+//   if (err) {
+//     console.error(
+//       'Error adding account_id column to announcements:',
+//       err.message
+//     );
+//   } else {
+//     console.log('Added account_id column to announcements table');
+//   }
+// });
