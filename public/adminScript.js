@@ -1,6 +1,18 @@
 async function checkAdminAuthentication() {
   try {
-    const response = await fetch('/api/check-auth');
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      console.log('No token found');
+      window.location.href = '/';
+      return;
+    }
+
+    const response = await fetch('/api/check-auth', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     const data = await response.json();
 
     if (!data.isAuthenticated) {
@@ -23,7 +35,6 @@ async function checkAdminAuthentication() {
   }
 }
 
-// Call the function after getUsers and displayUsers have been executed
 getUsers().then(() => {
   checkAdminAuthentication();
 });
@@ -41,12 +52,14 @@ document
       'register-error-message'
     );
 
+    const token = localStorage.getItem('token');
+
     try {
-      const response = await fetch('/api/register', {
+      const response = await fetch('/api/create-user', {
         method: 'POST',
-        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           username: username.value,
@@ -55,20 +68,14 @@ document
           role: role.value,
         }),
       });
-
       if (response.ok) {
         alert('User successfully added');
-        // Clear input fields
         username.value = '';
         password.value = '';
         email.value = '';
         role.value = '';
-
-        // Hide the error message
         errorMessageElement.style.display = 'none';
-
-        // Close the modal
-        $('#register-modal').modal('hide');
+        getUsers();
       } else {
         const errorData = await response.json();
         errorMessageElement.textContent =
@@ -79,14 +86,16 @@ document
       errorMessageElement.textContent = 'Error: ' + error.message;
       errorMessageElement.style.display = 'block';
     }
-    getUsers();
   });
 
 async function getUsers() {
+  const token = localStorage.getItem('token');
   try {
     const response = await fetch('/api/users', {
       method: 'GET',
-      credentials: 'same-origin',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
     if (response.ok) {
       const data = await response.json();
@@ -102,9 +111,14 @@ async function getUsers() {
 }
 
 async function deleteUser(id) {
+  const token = localStorage.getItem('token');
+
   try {
     const response = await fetch(`/api/users/${id}`, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (response.ok) {
@@ -121,7 +135,7 @@ async function deleteUser(id) {
 
 function displayUsers(users, role) {
   const tbody = document.getElementById('users-table').querySelector('tbody');
-  tbody.innerHTML = ''; // Clear the table
+  tbody.innerHTML = '';
 
   users.forEach((user) => {
     const row = document.createElement('tr');
@@ -142,13 +156,12 @@ function displayUsers(users, role) {
     roleCell.textContent = user.role;
     row.appendChild(roleCell);
 
-    // Add the delete button to the row if the authenticated user is an admin
     if (role === 'admin') {
       const deleteCell = document.createElement('td');
       const deleteButton = document.createElement('button');
       deleteButton.textContent = 'Delete';
-      deleteButton.classList.add('btn', 'btn-danger', 'delete-user'); // Add Bootstrap classes
-      deleteButton.dataset.userId = user.id; // Add the user ID to the dataset
+      deleteButton.classList.add('btn', 'btn-danger', 'delete-user');
+      deleteButton.dataset.userId = user.id;
       deleteButton.addEventListener('click', () => {
         deleteUser(user.id);
       });

@@ -15,7 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function checkAuthentication() {
     try {
-      const response = await fetch('/api/check-auth');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found');
+        document.getElementById('logout-button').classList.add('d-none');
+        document.getElementById('login-form').classList.remove('d-none');
+        document.getElementById('user-display').classList.add('d-none');
+        document.getElementById('admin-nav-item').classList.add('d-none');
+        return;
+      }
+
+      const response = await fetch('/api/check-auth', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
 
       if (data.isAuthenticated) {
@@ -23,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('login-form').classList.add('d-none');
         document.getElementById('announcement-form').style.display = 'block';
 
-        // Update the following line to show "Welcome <username>"
         document.getElementById(
           'user-display'
         ).textContent = `Welcome ${data.user.username}`;
@@ -32,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         document.getElementById('logout-button').classList.add('d-none');
         document.getElementById('login-form').classList.remove('d-none');
-        // Add the following line to hide the user's name when not authenticated
+
         document.getElementById('user-display').classList.add('d-none');
         document.getElementById('admin-nav-item').classList.add('d-none');
       }
@@ -42,27 +55,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   checkAuthentication();
 
-  document
-    .getElementById('logout-button')
-    .addEventListener('click', async () => {
-      try {
-        const response = await fetch('/api/logout', {
-          method: 'POST',
-        });
+  document.getElementById('logout-button').addEventListener('click', () => {
+    try {
+      localStorage.removeItem('token');
+      alert('Logout successful');
+      window.location.href = '/';
 
-        if (response.ok) {
-          document.getElementById('logout-button').classList.add('d-none');
-          // Add the following line to hide the user's name on logout
-          document.getElementById('user-display').classList.add('d-none');
-          alert('Logout successful');
-          window.location.href = '/';
-        } else {
-          console.error('Error during logout:', response.statusText);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-      }
-    });
+      document.getElementById('logout-button').classList.add('d-none');
+      document.getElementById('user-display').classList.add('d-none');
+      document.getElementById('admin-nav-item').classList.add('d-none');
+      document.getElementById('login-form').classList.remove('d-none');
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  });
 
   document
     .getElementById('login-form')
@@ -73,10 +79,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const password = document.getElementById('login-password').value;
 
       try {
+        const token = localStorage.getItem('token');
+
         const response = await fetch('/api/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ username, password }),
         });
@@ -85,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const data = await response.json();
           console.log('Logged in successfully', data);
 
+          localStorage.setItem('token', data.token);
           window.location.href = '/';
         } else {
           console.error('Error during login:', response.statusText);
@@ -96,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document
-  .getElementById('register-form')
+  .getElementById('register-form-new')
   .addEventListener('submit', async (event) => {
     event.preventDefault();
 
@@ -114,7 +124,7 @@ document
     });
 
     try {
-      const response = await fetch('/api/register', {
+      const response = await fetch('/api/register-new-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +137,7 @@ document
       });
 
       if (response.ok) {
-        alert('Registration successful');
+        alert('Registration successful, please log in with your data!');
 
         usernameInput.value = '';
         passwordInput.value = '';

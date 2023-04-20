@@ -1,9 +1,15 @@
 async function getUser() {
   try {
-    const response = await fetch('/api/check-auth');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return null;
+    }
+    const response = await fetch('/api/check-auth', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     const data = await response.json();
-
-    console.log(data);
     if (data.isAuthenticated) {
       return data.user;
     } else {
@@ -14,7 +20,6 @@ async function getUser() {
     return null;
   }
 }
-getUser();
 
 document
   .getElementById('announcement-form')
@@ -27,10 +32,12 @@ document
     const updatedAt = createdAt;
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/announcements', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           title,
@@ -39,7 +46,6 @@ document
           updated_at: updatedAt,
         }),
       });
-
       if (response.status === 201) {
         const data = await response.json();
         console.log('Announcement created:', data);
@@ -57,6 +63,7 @@ document
 
 async function fetchAnnouncements() {
   try {
+    const token = localStorage.getItem('token');
     const user = await getUser();
     const announcementForm = document.getElementById('announcement-form');
     const loginRegisterMessage = document.getElementById(
@@ -70,10 +77,12 @@ async function fetchAnnouncements() {
       announcementForm.style.display = 'none';
       loginRegisterMessage.style.display = 'block';
     }
-    const response = await fetch('/api/announcements');
+    const response = await fetch('/api/announcements', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     const data = await response.json();
-
-    console.log(data);
     if (response.ok) {
       const role = data.role;
       displayAnnouncements(data.announcements, role);
@@ -202,8 +211,12 @@ function openEditForm(announcement) {
 
 async function deleteAnnouncement(id) {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`/api/announcements/${id}`, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (response.ok) {
@@ -228,14 +241,18 @@ document
     const content = document.getElementById('edit-announcement-content').value;
 
     try {
+      const token = localStorage.getItem('token');
+      console.log(token);
       const response = await fetch(`/api/announcements/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ title, content }),
       });
 
+      console.log(response);
       if (response.ok) {
         alert('Announcement updated');
         fetchAnnouncements();
@@ -572,9 +589,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 async function fetchEvents() {
   try {
-    const response = await fetch('/api/events');
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/events', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     const events = await response.json();
-    console.log(events);
 
     return events.map((event) => ({
       ...event,
@@ -590,10 +611,13 @@ async function fetchEvents() {
 }
 
 async function addEvent(event) {
+  const token = localStorage.getItem('token');
+
   const response = await fetch('/api/events', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       ...event,
@@ -622,10 +646,12 @@ async function addEvent(event) {
 
 async function editEvent(eventId, eventUpdates) {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`/api/events/${eventId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         ...eventUpdates,
@@ -656,8 +682,12 @@ async function editEvent(eventId, eventUpdates) {
 
 async function deleteEvent(eventId) {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`/api/events/${eventId}`, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (!response.ok) {
@@ -673,8 +703,12 @@ async function deleteEvent(eventId) {
 
 async function deleteAllEvents() {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch('/api/events', {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (!response.ok) {
@@ -687,15 +721,6 @@ async function deleteAllEvents() {
     console.error('Error deleting all events:', error);
   }
 }
-
-// deleteAllEvents()
-//   .then(() => {
-//     console.log('All events deleted');
-//     // Reload the calendar or do any other actions you want to perform after deleting all events
-//   })
-//   .catch((error) => {
-//     console.error('Error while deleting all events:', error);
-//   });
 
 const createAdminUser = async (username, email, password) => {
   try {
@@ -717,6 +742,15 @@ const createAdminUser = async (username, email, password) => {
     console.error('Error creating admin user:', error.message);
   }
 };
+
+// deleteAllEvents()
+//   .then(() => {
+//     console.log('All events deleted');
+//     // Reload the calendar or do any other actions you want to perform after deleting all events
+//   })
+//   .catch((error) => {
+//     console.error('Error while deleting all events:', error);
+//   });
 
 // Replace these values with the desired username, email, and password for the admin user
 
