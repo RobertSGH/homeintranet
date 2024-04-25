@@ -17,13 +17,13 @@ app.get('/admin', (req, res) => {
 // DATABASE;
 const pgp = require('pg-promise')();
 const connectionString =
-  'postgres://ieuxwpeu:Pbxb_1VcZTNd7ciCkyxCJh7nvsSJP_rk@dumbo.db.elephantsql.com/ieuxwpeu';
+  '///';
 const db = pgp(connectionString);
 console.log('Connected to db');
 
-app.listen(PORT, () => {
-  console.log(`Server is running on ${PORT}`);
-});
+// app.listen(PORT, () => {
+//   console.log(`Server is running on ${PORT}`);
+// });
 
 db.connect()
   .then((obj) => {
@@ -36,7 +36,7 @@ db.connect()
 
 //JWT TOKEN AUTH
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = 'jebala-te-342';
+const JWT_SECRET = '///';
 
 function generateToken(user) {
   return jwt.sign(
