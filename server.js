@@ -25,6 +25,15 @@ app.listen(PORT, () => {
   console.log(`Server is running on ${PORT}`);
 });
 
+db.connect()
+  .then((obj) => {
+    obj.done(); // success, release connection
+    console.log('Database connection successful');
+  })
+  .catch((error) => {
+    console.error('Database connection error:', error.stack);
+  });
+
 //JWT TOKEN AUTH
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = 'jebala-te-342';
@@ -638,7 +647,7 @@ app.delete('/api/events', ensureAuthenticated, async (req, res) => {
   }
 });
 
-// module.exports = app; // for vercel
+module.exports = app; // for vercel
 
 // function alterTable() {
 //   const sql = 'ALTER TABLE events ADD COLUMN account_id INTEGER';
