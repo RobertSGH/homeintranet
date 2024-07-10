@@ -11,9 +11,9 @@
   width: 100%;
 }
 
-body {
+/* body {
   font-family: Arial, sans-serif;
-}
+} */
 
 nav a.active {
   color: #007bff;
@@ -69,4 +69,124 @@ h1 {
   width: 200px;
   height: 100px;
   z-index: 1000;
+}
+
+/* landing page */
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #1a1a1a;
+  color: #fff;
+}
+
+.header {
+  color: white;
+  height: 70vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  padding-top: 56px;
+}
+
+.header .navbar {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+#rotating-text {
+  color: #007bff;
+}
+
+.slot-container {
+  display: inline-block;
+  overflow: hidden;
+  height: 2.2em;
+  vertical-align: bottom;
+}
+
+.slot {
+  display: inline-block;
+  transition: transform 1s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.slot.slot-spin {
+  transform: translateY(-100%);
+}
+
+.btn-outline-light {
+  margin-left: 15px;
+}
+
+.header .display-4 {
+  font-weight: bold;
+}
+
+.header .lead {
+  font-size: 1.25rem;
+}
+
+.header .btn {
+  padding: 10px 20px;
+  font-size: 1.2rem;
+}
+
+.features {
+  padding: 60px 0;
+}
+
+.feature-box {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 10px;
+  transition: transform 0.3s;
+  height: 100%;
+}
+
+.feature-box:hover {
+  transform: scale(1.05);
+}
+
+.features .fa-3x {
+  color: #007bff;
+  margin-bottom: 20px;
+}
+
+.about {
+  padding: 60px 0;
+}
+
+.testimonials {
+  padding: 60px 0;
+}
+
+.testimonial {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.testimonial-text {
+  font-size: 18px;
+}
+
+.testimonial-author {
+  font-size: 14px;
+  font-style: italic;
+  margin-top: 10px;
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+  background-color: #007bff;
+  border-radius: 20%;
+}
+
+.footer {
+  padding: 20px 0;
+}
+
+.footer p {
+  margin: 0;
 }

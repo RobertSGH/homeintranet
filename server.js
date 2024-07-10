@@ -1,29 +1,37 @@
 //SETTING UP THE SERVER && express
+require('dotenv').config();
+
 const express = require('express');
 const { use } = require('express/lib/application');
 const PORT = process.env.PORT || 3000;
 const bcrypt = require('bcrypt');
 const app = express();
 const path = require('path');
+const jwt = require('jsonwebtoken');
+const pgp = require('pg-promise')();
+const db = pgp(process.env.DATABASE_URL);
 
-app.use(express.static('public')); //serving static files
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html')); // assuming your new HTML file is named 'landing.html'
+});
+
+// Move the current root to /app or another path
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// DATABASE;
-const pgp = require('pg-promise')();
-const connectionString =
-  '///';
-const db = pgp(connectionString);
-console.log('Connected to db');
+app.listen(PORT, () => {
+  console.log(`Server is running on ${PORT}`);
+});
 
-// app.listen(PORT, () => {
-//   console.log(`Server is running on ${PORT}`);
-// });
+app.use(express.static('public')); //serving static files
 
 db.connect()
   .then((obj) => {
@@ -33,10 +41,7 @@ db.connect()
   .catch((error) => {
     console.error('Database connection error:', error.stack);
   });
-
-//JWT TOKEN AUTH
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = '///';
+console.log('Connected to db');
 
 function generateToken(user) {
   return jwt.sign(
@@ -47,7 +52,7 @@ function generateToken(user) {
       account_id: user.account_id,
       email: user.email,
     },
-    JWT_SECRET,
+    process.env.JWT_SECRET,
     {
       expiresIn: '1h',
     }
@@ -55,7 +60,7 @@ function generateToken(user) {
 }
 
 function verifyToken(token) {
-  return jwt.verify(token, JWT_SECRET);
+  return jwt.verify(token, process.env.JWT_SECRET);
 }
 
 //Protecting routes

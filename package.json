@@ -12,12 +12,12 @@
   "dependencies": {
     "@fullcalendar/bootstrap": "^6.1.5",
     "bcrypt": "^5.1.0",
+    "dotenv": "^16.4.5",
     "express": "^4.18.2",
     "express-session": "^1.17.3",
     "jsonwebtoken": "^9.0.0",
     "passport": "^0.6.0",
     "passport-local": "^1.0.0",
-    "pg-promise": "^11.4.3",
-    "sqlite3": "^5.1.6"
+    "pg-promise": "^11.4.3"
   }
 }
