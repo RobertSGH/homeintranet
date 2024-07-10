@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Landing Page</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="header">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+          <a class="navbar-brand" href="index.html">HomeIntranet</a>
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-toggle="collapse"
+            data-target="#navbarNav"
+            aria-controls="navbarNav"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="#features">Features</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#about">About</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#testimonials">Testimonials</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+      <div class="container header-content">
+        <div class="row align-items-center">
+          <div class="col-md-6 text-center text-md-left">
+            <h1 class="display-4">
+              Welcome to <span id="rotating-text">HomeIntranet</span>
+            </h1>
+            <p class="lead">
+              Your Ultimate Solution for Event and Announcement Management
+            </p>
+            <p class="lead">
+              <span class="slot-container"
+                ><span id="rotating-word" class="slot"></span
+              ></span>
+            </p>
+            <p>
+              Streamline your scheduling and keep everyone informed with our
+              powerful, easy-to-use platform.
+            </p>
+            <a href="index.html" class="btn btn-primary btn-lg mt-3"
+              >Try it out</a
+            >
+          </div>
+          <div class="col-md-6 text-center">
+            <img
+              src="assets/calendarImage.svg"
+              class="img-fluid"
+              alt="Illustration"
+            />
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section id="features" class="features bg-dark text-white py-5">
+      <div class="container">
+        <h2 class="text-center">Features</h2>
+        <div class="row text-center mt-4">
+          <div class="col-md-4">
+            <div class="feature-box">
+              <i class="fas fa-calendar-alt fa-3x mb-3"></i>
+              <h3>Calendar Management</h3>
+              <p>Efficiently manage all your events in one place.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="feature-box">
+              <i class="fas fa-bullhorn fa-3x mb-3"></i>
+              <h3>Announcements</h3>
+              <p>Keep everyone informed with real-time announcements.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="feature-box">
+              <i class="fas fa-users fa-3x mb-3"></i>
+              <h3>User Roles</h3>
+              <p>Admins and users with distinct privileges.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" class="about text-white py-5">
+      <div class="container">
+        <div class="row align-items-center text-center">
+          <div class="col-lg-6">
+            <h2>About HomeIntranet</h2>
+            <p>
+              HomeIntranet is designed to help you manage events and
+              announcements with ease. Whether you're an admin or a user, our
+              platform provides the tools you need to stay organized and
+              informed.
+            </p>
+            <a href="index.html" class="btn btn-primary btn-lg mt-3"
+              >Get started</a
+            >
+          </div>
+
+          <div class="col-lg-6">
+            <img
+              src="assets/saasApplication.svg"
+              class="img-fluid"
+              alt="Illustration"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="testimonials" class="testimonials bg-dark text-white py-5">
+      <div class="container">
+        <h2 class="text-center">Testimonials</h2>
+        <div
+          id="testimonialCarousel"
+          class="carousel slide"
+          data-ride="carousel"
+        >
+          <div class="carousel-inner">
+            <div class="carousel-item active">
+              <div class="testimonial">
+                <p class="testimonial-text">
+                  "HomeIntranet has revolutionized the way we handle our events
+                  and announcements. The user interface is intuitive and easy to
+                  navigate."
+                </p>
+                <p class="testimonial-author">- John Doe</p>
+              </div>
+            </div>
+            <div class="carousel-item">
+              <div class="testimonial">
+                <p class="testimonial-text">
+                  "Managing user roles and keeping everyone informed has never
+                  been easier. HomeIntranet is a game-changer for our team."
+                </p>
+                <p class="testimonial-author">- Jane Smith</p>
+              </div>
+            </div>
+            <div class="carousel-item">
+              <div class="testimonial">
+                <p class="testimonial-text">
+                  "The real-time announcements feature is fantastic. We can
+                  communicate important updates instantly with HomeIntranet."
+                </p>
+                <p class="testimonial-author">- Michael Brown</p>
+              </div>
+            </div>
+          </div>
+          <a
+            class="carousel-control-prev"
+            href="#testimonialCarousel"
+            role="button"
+            data-slide="prev"
+          >
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="sr-only">Previous</span>
+          </a>
+          <a
+            class="carousel-control-next"
+            href="#testimonialCarousel"
+            role="button"
+            data-slide="next"
+          >
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="sr-only">Next</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer bg-dark text-white text-center py-3">
+      <div class="container">
+        <p>&copy; 2024 HomeIntranet. All rights reserved.</p>
+      </div>
+    </footer>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const words = ['Efficient', 'Innovative', 'Reliable'];
+        let index = 0;
+        const rotatingWordElement = document.getElementById('rotating-word');
+
+        setInterval(() => {
+          rotatingWordElement.classList.add('slot-spin');
+          setTimeout(() => {
+            rotatingWordElement.textContent = words[index];
+            rotatingWordElement.classList.remove('slot-spin');
+            index = (index + 1) % words.length;
+          }, 1000); // Match the duration of the slot-spin animation
+        }, 3000); // Rotate every 3 seconds
+      });
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  </body>
+</html>
