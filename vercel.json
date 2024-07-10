@@ -20,13 +20,17 @@
       "dest": "public/admin.html"
     },
     {
+      "src": "/app",
+      "dest": "public/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "public/$1",
       "continue": true
     },
     {
       "src": "/",
-      "dest": "public/index.html"
+      "dest": "public/landing.html"
     }
   ]
 }
