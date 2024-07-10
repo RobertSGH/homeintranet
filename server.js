@@ -705,8 +705,6 @@ module.exports = app; // for vercel
 //   }
 // });
 
-// const emailToCheck = 'robertirska@gmail.com';
-
 // db.get('SELECT * FROM accounts WHERE name = ?', [emailToCheck], (err, row) => {
 //   if (err) {
 //     console.error('Error:', err);
