@@ -15,10 +15,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'landing.html')); // assuming your new HTML file is named 'landing.html'
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
-// Move the current root to /app or another path
 app.get('/app', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -31,7 +30,7 @@ app.listen(PORT, () => {
   console.log(`Server is running on ${PORT}`);
 });
 
-app.use(express.static('public')); //serving static files
+app.use(express.static('public'));
 
 db.connect()
   .then((obj) => {
